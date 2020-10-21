@@ -31,17 +31,21 @@ struct named {
 template<auto... Names>
 class name_sequence { };
 
+template<class... Types>
+class type_sequence { };
+
 template<class... Cols>
 struct tuple
 {
     using names = name_sequence<Cols::name...>;
+    using types = type_sequence<typename Cols::type...>;
     std::tuple<typename Cols::type...> values;
 };
 
-template<class... Cols>
+template<class NamedTuple>
 class tuple_iterator {
   public:
-    using value_type = tuple<Cols...>;
+    using value_type = NamedTuple;
     using difference_type = void;
     using pointer = void;
     using reference = value_type; // we don't want to hold a tuple
@@ -59,7 +63,7 @@ class tuple_iterator {
             cols_.emplace(std::move(key), i++);
         }
 
-        if (!cols_valid_(typename tuple<Cols...>::names()))
+        if (!cols_valid_(typename NamedTuple::names()))
             throw std::runtime_error("required columns not found in header");
     }
 
@@ -68,12 +72,10 @@ class tuple_iterator {
         return it_ == other.it_;
     }
 
-    reference operator*() noexcept
+    reference operator*()
     {
-        auto line = *it_;
-        return {{
-            parse::parse<typename Cols::type>(line[cols_[Cols::name.name]])...
-        }};
+        return parse_(
+          typename NamedTuple::types(), typename NamedTuple::names());
     }
 
     tuple_iterator& operator++()
@@ -93,6 +95,15 @@ class tuple_iterator {
     csv::iterator it_;
     std::unordered_map<std::string, std::size_t> cols_;
 
+    template<class... Ts, auto... Names>
+    value_type parse_(type_sequence<Ts...>, name_sequence<Names...>)
+    {
+        auto line = *it_;
+        return {{
+            parse::parse<Ts>(std::move(line[cols_[Names.name]]))...
+        }};
+    }
+
     template<auto... Names>
     bool cols_valid_(name_sequence<Names...>) const noexcept
     {
@@ -100,18 +111,18 @@ class tuple_iterator {
     }
 };
 
-template<class... Cols>
+template<class NamedTuple>
 class tuple_range {
   public:
     constexpr tuple_range(std::istream& is) noexcept
         : is_(is) { }
 
-    tuple_iterator<Cols...> begin()
+    tuple_iterator<NamedTuple> begin()
     {
         return { is_ };
     }
 
-    tuple_iterator<Cols...> end() noexcept
+    tuple_iterator<NamedTuple> end() noexcept
     {
         return { };
     }

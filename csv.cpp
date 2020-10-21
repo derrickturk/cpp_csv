@@ -23,8 +23,7 @@ void iterator::parse_line_()
                         break;
 
                     case '\n':
-                        if (!word.empty())
-                            line_.emplace_back(std::move(word));
+                        line_.emplace_back(std::move(word));
                         return;
 
                     default:
@@ -57,8 +56,7 @@ void iterator::parse_line_()
                         break;
 
                     case '\n':
-                        if (!word.empty())
-                            line_.emplace_back(std::move(word));
+                        line_.emplace_back(std::move(word));
                         return;
 
                     default:
