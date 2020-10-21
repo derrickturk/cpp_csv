@@ -18,9 +18,12 @@ int main(int argc, char *argv[])
         std::ifstream csv_file(argv[i]);
 
         for (const auto& row : named::tuple_range<row_type>(csv_file)) {
-            auto [x, y, z] = row.values;
+            const auto [x, y, z] = row;
             std::cout << "row: x = " << x << ", y = " << y << ", z = "
               << (z.has_value() ? z.value() : 0.0) << '\n';
+
+            auto also_y = get<"y">(row);
+            std::cout << "y = " << also_y << '\n';
         }
     }
 }

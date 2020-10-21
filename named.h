@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <tuple>
+#include <type_traits>
 #include <unordered_map>
 
 #include "csv.h"
@@ -18,6 +19,19 @@ struct symbol {
     constexpr symbol(const char (&str)[N]) noexcept
     {
         std::ranges::copy(str, name);
+    }
+
+    template<std::size_t M>
+    constexpr bool operator==(const symbol<M>& other) const noexcept
+    {
+        if (N != M)
+            return false;
+
+        for (std::size_t i = 0; i < N; ++i)
+            if (name[i] != other.name[i])
+                return false;
+
+        return true;
     }
 };
 
@@ -35,12 +49,58 @@ template<class... Types>
 class type_sequence { };
 
 template<class... Cols>
-struct tuple
-{
+struct tuple {
     using names = name_sequence<Cols::name...>;
     using types = type_sequence<typename Cols::type...>;
     std::tuple<typename Cols::type...> values;
 };
+
+template<symbol Name, class Col, class... Cols>
+constexpr std::size_t name_index()
+{
+    if constexpr (Name == Col::name) {
+        return 0;
+    } else {
+        static_assert(sizeof...(Cols) > 0, "name not found in columns");
+        return 1 + name_index<Name, Cols...>();
+    }
+}
+
+template<std::size_t I, class... Cols>
+decltype(auto) get(tuple<Cols...>& t) noexcept
+{
+    return get<I>(t.values);
+}
+
+template<std::size_t I, class... Cols>
+decltype(auto) get(const tuple<Cols...>& t) noexcept
+{
+    return get<I>(t.values);
+}
+
+template<std::size_t I, class... Cols>
+decltype(auto) get(const tuple<Cols...>&& t) noexcept
+{
+    return get<I>(std::move(t.values));
+}
+
+template<symbol Name, class... Cols>
+decltype(auto) get(tuple<Cols...>& t) noexcept
+{
+    return get<name_index<Name, Cols...>()>(t.values);
+}
+
+template<symbol Name, class... Cols>
+decltype(auto) get(const tuple<Cols...>& t) noexcept
+{
+    return get<name_index<Name, Cols...>()>(t.values);
+}
+
+template<symbol Name, class... Cols>
+decltype(auto) get(tuple<Cols...>&& t) noexcept
+{
+    return get<name_index<Name, Cols...>()>(std::move(t.values));
+}
 
 template<class NamedTuple>
 class tuple_iterator {
@@ -140,6 +200,19 @@ constexpr auto operator""_sym() noexcept
 }
 
 }
+
+}
+
+namespace std {
+
+template<class... Cols>
+struct tuple_size<named::tuple<Cols...>>
+  : public integral_constant<size_t, sizeof...(Cols)> { };
+
+template<size_t I, class... Cols>
+struct tuple_element<I, named::tuple<Cols...>> {
+    using type = typename tuple_element<I, tuple<typename Cols::type...>>::type;
+};
 
 }
 
