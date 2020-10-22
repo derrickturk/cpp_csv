@@ -81,4 +81,21 @@ void iterator::parse_line_()
     }
 }
 
+std::istream& skip_bom(std::istream& is)
+{
+    if (is.peek() != 0xEF)
+        return is;
+
+    is.get();
+    if (is.peek() != 0xBB)
+        return is;
+
+    is.get();
+    if (is.peek() != 0xBF)
+        return is;
+
+    is.get();
+    return is;
+}
+
 }

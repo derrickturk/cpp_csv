@@ -102,6 +102,8 @@ class range {
     std::istream& is_;
 };
 
+std::istream& skip_bom(std::istream& is);
+
 }
 
 #endif

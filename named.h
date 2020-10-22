@@ -55,6 +55,34 @@ struct tuple {
     std::tuple<typename Cols::type...> values;
 };
 
+namespace detail {
+
+template<class T>
+std::ostream& operator<<(std::ostream& os, const std::optional<T>& opt)
+{
+    if (opt.has_value())
+        return os << opt.value();
+    return os << "<NULL>";
+}
+
+template<class NamedTuple, std::size_t... Is, auto... Names>
+void tuple_print_impl(std::ostream& os, const NamedTuple& t,
+        std::index_sequence<Is...>, name_sequence<Names...>)
+{
+    ((os << (Is == 0 ? "" : ", ") << Names.name << ": " << get<Is>(t)), ...);
+}
+
+}
+
+template<class... Cols>
+std::ostream& operator<<(std::ostream& os, const tuple<Cols...>& t)
+{
+    os << "{ ";
+    detail::tuple_print_impl(os, t, std::index_sequence_for<Cols...>(),
+      name_sequence<Cols::name...>());
+    return os << " }";
+}
+
 template<symbol Name, class Col, class... Cols>
 constexpr std::size_t name_index()
 {
