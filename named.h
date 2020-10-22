@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <memory>
 #include <tuple>
 #include <type_traits>
 #include <unordered_map>
@@ -143,12 +144,12 @@ class tuple_iterator {
         : it_(), cols_() { }
 
     tuple_iterator(std::istream& is)
-        : it_(is), cols_()
+        : it_(is), cols_(new std::unordered_map<std::string, std::size_t>())
     {
         auto header = *it_++;
 
         for (std::size_t i = 0; auto& key : header) {
-            cols_.emplace(std::move(key), i++);
+            cols_->emplace(std::move(key), i++);
         }
 
         if (!cols_valid_(typename NamedTuple::names()))
@@ -181,21 +182,21 @@ class tuple_iterator {
 
   private:
     csv::iterator it_;
-    std::unordered_map<std::string, std::size_t> cols_;
+    std::shared_ptr<std::unordered_map<std::string, std::size_t>> cols_;
 
     template<class... Ts, auto... Names>
     value_type parse_(type_sequence<Ts...>, name_sequence<Names...>)
     {
         auto line = *it_;
         return {{
-            parse::parse<Ts>(std::move(line[cols_[Names.name]]))...
+            parse::parse<Ts>(std::move(line[(*cols_)[Names.name]]))...
         }};
     }
 
     template<auto... Names>
     bool cols_valid_(name_sequence<Names...>) const noexcept
     {
-        return (... && cols_.contains(Names.name));
+        return (... && cols_->contains(Names.name));
     }
 };
 
